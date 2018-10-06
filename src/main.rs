@@ -3,6 +3,9 @@ extern crate num;
 use num::integer::{gcd, lcm};
 use na::DMatrix;
 use std::collections::BTreeSet;
+use std::io::{BufReader, Result};
+use std::io::prelude::*;
+use std::fs::File;
 type Mat = DMatrix<i64>;
 
 #[derive(Debug, Clone)]
@@ -171,7 +174,11 @@ impl SimplicialComplex {
     fn from_simplices(simplices: &Vec<Simplex>) -> Self {
         let dim = simplices[0].len() - 1;
         let mut chain: Chain = vec![Vec::new(); dim + 1];
-        chain[dim] = simplices.clone();
+        let mut simplices = simplices.clone();
+        for simplex in simplices.iter_mut() {
+            simplex.sort();
+        }
+        chain[dim] = simplices;
         for q in (0..dim).rev() {
             let mut q_simplex_set: BTreeSet<Simplex> = BTreeSet::new();
             for s in &chain[q + 1] {
@@ -256,32 +263,28 @@ impl FinitelyGeneratedModule {
     }
 }
 
+fn read_file(filename: &str) -> Vec<Simplex> {
+    let file = File::open(filename).unwrap();
+    let reader = BufReader::new(file);
+    let mut simplices: Vec<Simplex> = Vec::new();
+    for line in reader.lines() {
+        let simplex: Simplex = match line {
+            Ok(line) => line.trim()
+                .split(' ')
+                .map(|s| s.parse::<usize>().unwrap())
+                .collect(),
+            Err(error) => {
+                panic!("{}", error);
+            }
+        };
+        simplices.push(simplex);
+    }
+    simplices
+}
+
 fn main() {
-    let c2 = vec![
-        vec![0, 1, 4],
-        vec![0, 1, 5],
-        vec![0, 2, 3],
-        vec![0, 2, 4],
-        vec![0, 3, 5],
-        vec![1, 2, 3],
-        vec![1, 2, 5],
-        vec![1, 3, 4],
-        vec![2, 4, 5],
-        vec![3, 4, 5],
-    ];
-    // let c0 = vec![vec![0], vec![1], vec![2], vec![3]];
-    // let c1 = vec![
-    //     vec![0, 1],
-    //     vec![0, 2],
-    //     vec![0, 3],
-    //     vec![1, 2],
-    //     vec![1, 3],
-    //     vec![2, 3],
-    // ];
-    // let c2 = vec![vec![0, 1, 2], vec![0, 1, 3], vec![0, 2, 3], vec![1, 2, 3]];
-    // let c3 = vec![vec![0, 1, 2, 3]];
-    // let c = vec![c0, c1, c2, c3];
+    let c2 = read_file("./plane.dat");
     let sc = SimplicialComplex::from_simplices(&c2);
+    println!("{:?}", sc);
     println!("H_1 = {}", sc.homology_group(1).to_string());
-    // let sc = SimplicialComplex::from_simplices(&vec![vec![0, 1, 2]]);
 }
