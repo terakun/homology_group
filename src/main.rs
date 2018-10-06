@@ -154,6 +154,7 @@ fn convert_divisible_seq(v: &Vec<i64>) -> Vec<i64> {
 }
 
 type Simplex = Vec<usize>;
+type DirectedSimplex = (Vec<usize>, bool);
 type Chain = Vec<Vec<Simplex>>;
 
 #[derive(Debug, Clone)]
@@ -198,13 +199,13 @@ impl SimplicialComplex {
         mat
     }
     fn homology_group(&self, q: usize) -> FinitelyGeneratedModule {
-        let mat1 = self.boundary_mat(q);
-        let mat2 = self.boundary_mat(q + 1);
+        let mat1 = self.boundary_mat(q - 1);
+        let mat2 = self.boundary_mat(q);
         let (v1, v2) = (smith(&mat1), smith(&mat2));
         let rank = mat2.nrows() - v1.len() - v2.len();
         let mut torsion: Vec<i64> = Vec::new();
         for a in v2 {
-            if a != 1 {
+            if a > 1 {
                 torsion.push(a);
             }
         }
@@ -222,28 +223,61 @@ struct FinitelyGeneratedModule {
 
 impl FinitelyGeneratedModule {
     fn to_string(&self) -> String {
-        let mut s = String::new();
-        for a in &self.torsion {
-            s = s + &format!("Z/{}Z⊕", a);
+        let torsion_str: Vec<String> = self.torsion.iter().map(|a| format!("Z/{}Z", a)).collect();
+
+        match (self.torsion.len(), self.rank) {
+            (0, 0) => "0".to_string(),
+            (0, _) => format!("Z^{}", self.rank),
+            (_, 0) => torsion_str.join("⊕"),
+            (_, _) => format!("{}⊕Z^{}", torsion_str.join("⊕"), self.rank),
         }
-        s + &format!("Z^{}", self.rank)
     }
 }
 
 fn main() {
-    let c2 = vec![vec![0, 1, 2], vec![0, 1, 3], vec![0, 2, 3], vec![1, 2, 3]];
+    // let c0 = vec![vec![0], vec![1], vec![2], vec![3], vec![4], vec![5]];
+    // let c1 = vec![
+    //     vec![0, 1],
+    //     vec![0, 2],
+    //     vec![0, 3],
+    //     vec![0, 4],
+    //     vec![0, 5],
+    //     vec![1, 2],
+    //     vec![1, 3],
+    //     vec![1, 4],
+    //     vec![1, 5],
+    //     vec![2, 3],
+    //     vec![2, 4],
+    //     vec![2, 5],
+    //     vec![3, 4],
+    //     vec![3, 5],
+    //     vec![4, 5],
+    // ];
+    // let c2 = vec![
+    //     vec![0, 1, 4],
+    //     vec![0, 1, 5],
+    //     vec![0, 2, 3],
+    //     vec![0, 2, 4],
+    //     vec![0, 3, 5],
+    //     vec![1, 2, 3],
+    //     vec![1, 2, 5],
+    //     vec![1, 3, 4],
+    //     vec![2, 4, 5],
+    //     vec![3, 4, 5],
+    // ];
+    // let c = vec![c0, c1, c2];
+    let c0 = vec![vec![0], vec![1], vec![2], vec![3]];
     let c1 = vec![
         vec![0, 1],
         vec![0, 2],
         vec![0, 3],
-        vec![0, 4],
         vec![1, 2],
         vec![1, 3],
         vec![2, 3],
-        vec![2, 4],
     ];
-    let c0 = vec![vec![0], vec![1], vec![2], vec![3], vec![4]];
-    let c = vec![c0, c1, c2];
+    let c2 = vec![vec![0, 1, 2], vec![0, 1, 3], vec![0, 2, 3], vec![1, 2, 3]];
+    let c3 = vec![vec![0, 1, 2, 3]];
+    let c = vec![c0, c1, c2, c3];
     let sc = SimplicialComplex::from_chain(&c);
-    println!("H_0 = {}", sc.homology_group(0).to_string());
+    println!("H_2 = {}", sc.homology_group(2).to_string());
 }
