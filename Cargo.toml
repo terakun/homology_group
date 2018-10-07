@@ -5,3 +5,4 @@ authors = ["Terasaki Shun <t.tera1217@gmail.com>"]
 
 [dependencies]
 nalgebra = "0.16.0"
+num = "*"
