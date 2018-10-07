@@ -317,18 +317,21 @@ fn read_file(filename: &str) -> Vec<Simplex> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("{} [simplices file]", args[0]);
+        return;
+    }
     let c2 = read_file(&args[1]);
-    // let c2 = read_file("./plane.dat");
     let sc = SimplicialComplex::from_simplices(&c2);
     println!("{}", sc.to_string());
-    let mut euler_char = 0;
+    let mut euler_char: i64 = 0;
     for q in 0..sc.chain.len() {
         let h = sc.homology_group(q);
         println!("H_{} = {}", q, h.to_string());
         if q % 2 == 0 {
-            euler_char = euler_char + h.rank;
+            euler_char = euler_char + (h.rank as i64);
         } else {
-            euler_char = euler_char - h.rank;
+            euler_char = euler_char - (h.rank as i64);
         }
     }
     println!("Euler characteristic χ = {}", euler_char);
