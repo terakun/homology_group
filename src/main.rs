@@ -3,9 +3,10 @@ extern crate num;
 use num::integer::{gcd, lcm};
 use na::DMatrix;
 use std::collections::BTreeSet;
-use std::io::{BufReader, Result};
+use std::io::BufReader;
 use std::io::prelude::*;
 use std::fs::File;
+use std::env;
 type Mat = DMatrix<i64>;
 
 #[derive(Debug, Clone)]
@@ -124,9 +125,13 @@ fn diagonalize(m: &Mat) -> (Mat, usize) {
 
 fn smith(m: &Mat) -> Vec<i64> {
     let (d, nzlen) = diagonalize(&m);
-    let mut v = vec![0; nzlen];
-    for i in 0..nzlen {
-        v[i] = d[(i, i)];
+    let mut v = Vec::new();
+    let mut i = 0;
+    while v.len() < nzlen {
+        if d[(i, i)] > 0 {
+            v.push(d[(i, i)]);
+        }
+        i = i + 1;
     }
     convert_divisible_seq(&v)
 }
@@ -194,6 +199,13 @@ impl SimplicialComplex {
         }
         SimplicialComplex { chain: chain }
     }
+    fn to_string(&self) -> String {
+        let mut s = String::new();
+        for (q, simplices) in self.chain.iter().enumerate() {
+            s = s + &format!("C_{}:{:?}\n", q, simplices);
+        }
+        s
+    }
 
     fn delta(simplex: &Simplex) -> Vec<(Simplex, i64)> {
         let mut result: Vec<(Simplex, i64)> = vec![(simplex.clone(), 0); simplex.len()];
@@ -214,7 +226,10 @@ impl SimplicialComplex {
         }
         None
     }
-    fn boundary_mat(&self, q: usize) -> Mat {
+    fn boundary_mat(&self, q: usize) -> Option<Mat> {
+        if q + 1 >= self.chain.len() {
+            return None;
+        }
         let mut mat = Mat::from_element(self.chain[q].len(), self.chain[q + 1].len(), 0);
         for (j, s) in self.chain[q + 1].iter().enumerate() {
             let result: Vec<(Simplex, i64)> = SimplicialComplex::delta(&s);
@@ -223,24 +238,40 @@ impl SimplicialComplex {
                 mat[(i, j)] = sign;
             }
         }
-        mat
+        Some(mat)
     }
     fn homology_group(&self, q: usize) -> FinitelyGeneratedModule {
-        let mat1 = self.boundary_mat(q - 1);
-        let mat2 = self.boundary_mat(q);
-        println!("∂_{} = {}", q - 1, mat1);
-        println!("∂_{} = {}", q, mat2);
-        let (v1, v2) = (smith(&mat1), smith(&mat2));
-        let rank = mat2.nrows() - v1.len() - v2.len();
-        let mut torsion: Vec<i64> = Vec::new();
-        for a in v2 {
-            if a > 1 {
-                torsion.push(a);
+        if q == 0 {
+            let mat = self.boundary_mat(q).unwrap();
+            let v = smith(&mat);
+            let rank = mat.nrows() - v.len();
+            FinitelyGeneratedModule {
+                torsion: Vec::new(),
+                rank: rank,
             }
-        }
-        FinitelyGeneratedModule {
-            torsion: torsion,
-            rank: rank,
+        } else if q == self.chain.len() - 1 {
+            let mat = self.boundary_mat(q - 1).unwrap();
+            let v = smith(&mat);
+            let rank = mat.ncols() - v.len();
+            FinitelyGeneratedModule {
+                torsion: Vec::new(),
+                rank: rank,
+            }
+        } else {
+            let mat1 = self.boundary_mat(q - 1).unwrap();
+            let mat2 = self.boundary_mat(q).unwrap();
+            let (v1, v2) = (smith(&mat1), smith(&mat2));
+            let rank = mat1.ncols() - v1.len() - v2.len();
+            let mut torsion: Vec<i64> = Vec::new();
+            for a in v2 {
+                if a > 1 {
+                    torsion.push(a);
+                }
+            }
+            FinitelyGeneratedModule {
+                torsion: torsion,
+                rank: rank,
+            }
         }
     }
 }
@@ -256,8 +287,10 @@ impl FinitelyGeneratedModule {
 
         match (self.torsion.len(), self.rank) {
             (0, 0) => "0".to_string(),
+            (0, 1) => format!("Z"),
             (0, _) => format!("Z^{}", self.rank),
             (_, 0) => torsion_str.join("⊕"),
+            (_, 1) => format!("{}⊕Z", torsion_str.join("⊕")),
             (_, _) => format!("{}⊕Z^{}", torsion_str.join("⊕"), self.rank),
         }
     }
@@ -283,8 +316,20 @@ fn read_file(filename: &str) -> Vec<Simplex> {
 }
 
 fn main() {
-    let c2 = read_file("./plane.dat");
+    let args: Vec<String> = env::args().collect();
+    let c2 = read_file(&args[1]);
+    // let c2 = read_file("./plane.dat");
     let sc = SimplicialComplex::from_simplices(&c2);
-    println!("{:?}", sc);
-    println!("H_1 = {}", sc.homology_group(1).to_string());
+    println!("{}", sc.to_string());
+    let mut euler_char = 0;
+    for q in 0..sc.chain.len() {
+        let h = sc.homology_group(q);
+        println!("H_{} = {}", q, h.to_string());
+        if q % 2 == 0 {
+            euler_char = euler_char + h.rank;
+        } else {
+            euler_char = euler_char - h.rank;
+        }
+    }
+    println!("Euler characteristic χ = {}", euler_char);
 }
