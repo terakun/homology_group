@@ -1,4 +1,4 @@
-# homology_group
+# Homology group
 calculate simplicial complex homology group
 ### How to use
 ```
