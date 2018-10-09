@@ -52,19 +52,21 @@ fn elem_col_operate(m: &mut Mat, op: &ElementaryOperation) {
 
 fn row_elimination(m: &mut Mat, idx: usize) -> bool {
     let rows = m.nrows();
-    let mut minval = 1000;
-    let mut mini = 0;
-    for i in idx..rows {
-        let absval = m[(i, idx)].abs();
-        if 0 < absval && absval < minval {
-            minval = absval;
-            mini = i;
+    // 0でない絶対値最小の要素の添字を求める
+    let min_i = match m.column(idx)
+        .iter()
+        .enumerate()
+        .skip(idx)
+        .map(|(i, x)| (x.abs(), i))
+        .filter(|(absx, _)| *absx > 0)
+        .min()
+    {
+        Some((_, i)) => i,
+        None => {
+            return false;
         }
-    }
-    if minval == 1000 {
-        return false;
-    }
-    elem_row_operate(m, &ElementaryOperation::Switch(idx, mini));
+    };
+    elem_row_operate(m, &ElementaryOperation::Switch(idx, min_i));
     if m[(idx, idx)] < 0 {
         elem_row_operate(m, &ElementaryOperation::Negate(idx));
     }
@@ -80,19 +82,21 @@ fn row_elimination(m: &mut Mat, idx: usize) -> bool {
 }
 fn col_elimination(m: &mut Mat, idx: usize) -> bool {
     let cols = m.ncols();
-    let mut minval = 1000;
-    let mut minj = 0;
-    for j in idx..cols {
-        let absval = m[(idx, j)].abs();
-        if 0 < absval && absval < minval {
-            minval = absval;
-            minj = j;
+    // 0でない絶対値最小の要素の添字を求める
+    let min_j = match m.row(idx)
+        .iter()
+        .enumerate()
+        .skip(idx)
+        .map(|(j, x)| (x.abs(), j))
+        .filter(|(absx, _)| *absx > 0)
+        .min()
+    {
+        Some((_, j)) => j,
+        None => {
+            return false;
         }
-    }
-    if minval == 1000 {
-        return false;
-    }
-    elem_col_operate(m, &ElementaryOperation::Switch(idx, minj));
+    };
+    elem_col_operate(m, &ElementaryOperation::Switch(idx, min_j));
     if m[(idx, idx)] < 0 {
         elem_col_operate(m, &ElementaryOperation::Negate(idx));
     }
