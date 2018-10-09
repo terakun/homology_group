@@ -287,16 +287,19 @@ struct FinitelyGeneratedModule {
 
 impl FinitelyGeneratedModule {
     fn to_string(&self) -> String {
-        let torsion_str: Vec<String> = self.torsion.iter().map(|a| format!("Z/{}Z", a)).collect();
-
-        match (self.torsion.len(), self.rank) {
-            (0, 0) => "0".to_string(),
-            (0, 1) => format!("Z"),
-            (0, _) => format!("Z^{}", self.rank),
-            (_, 0) => torsion_str.join("⊕"),
-            (_, 1) => format!("{}⊕Z", torsion_str.join("⊕")),
-            (_, _) => format!("{}⊕Z^{}", torsion_str.join("⊕"), self.rank),
+        let mut torsion_str: Vec<String> =
+            self.torsion.iter().map(|a| format!("Z/{}Z", a)).collect();
+        if self.torsion.len() == 0 && self.rank == 0 {
+            return "0".to_string();
         }
+        let z_str = match self.rank {
+            1 => "Z".to_string(),
+            _ => format!("Z^{}", self.rank),
+        };
+        if self.rank > 0 {
+            torsion_str.push(z_str);
+        }
+        torsion_str.join("⊕")
     }
 }
 
